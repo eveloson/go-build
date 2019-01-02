@@ -1,0 +1,32 @@
+# and a workspace (GOPATH) configured at /go.
+FROM i386/ubuntu:14.04 AS build
+
+RUN sed -i 's/archive.ubuntu.com/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+RUN apt-get update
+RUN apt-get install lsof --assume-yes build-essential wget git
+WORKDIR /root/
+RUN wget https://dl.google.com/go/go1.10.7.linux-386.tar.gz
+RUN tar -C /usr/local -xzf go1.10.7.linux-386.tar.gz
+RUN export PATH=$PATH:/usr/local/go/bin
+RUN git clone https://github.com/eveloson/go-build.git go
+RUN export PATH=$PATH:/root/go/bin
+WORKDIR /root/go/src/github.com/boramalper/magnetico/
+RUN /usr/local/go/bin/go get -u github.com/kevinburke/go-bindata/..
+
+# Build the outyet command inside the container.
+# (You may fetch or manage dependencies here,
+# either manually or with a tool like "godep".)
+#RUN     curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+#WORKDIR /go/src/github.com/boramalper/magnetico/
+#RUN     make ensure
+RUN     make magneticod
+RUN     make magneticow
+
+FROM i386/ubuntu:14.04
+WORKDIR /
+COPY --from=build /go/bin/magneticod /magneticod
+COPY --from=build /go/bin/magneticow /magneticow
+# Run the outyet command by default when the container starts.
+ENTRYPOINT ["/magneticod"]
+ENTRYPOINT ["/magneticow"]
+EXPOSE 8080
